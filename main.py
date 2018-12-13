@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 
-PSF_SIZE = 32
+PSF_SIZE = 256
 
 def main():
     image = cv2.imread(str(Path('./hw1/DIPSourceHW1.jpg')), 0)
@@ -44,6 +44,7 @@ def generate_psf(cont_x, cont_y):
     indxs = np.linspace(0, 1001, num=256, endpoint=False, dtype=int)
     discrete = np.array((cont_x[indxs], cont_y[indxs]))
     discrete = np.round(discrete / np.max(np.abs(discrete)) * (PSF_SIZE - 1)//2)
+    # discrete = np.round(discrete)
     psf = np.zeros((PSF_SIZE, PSF_SIZE), dtype=int)
     for x, y in zip(discrete[0], discrete[1]):
         psf[int(x)+PSF_SIZE//2, int(y)+PSF_SIZE//2] += 1
