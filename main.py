@@ -8,16 +8,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 
+PSF_SIZE = 32
 
 def main():
     image = cv2.imread(str(Path('./hw1/DIPSourceHW1.jpg')), 0)
     mat = sio.loadmat(Path('./hw1/100_motion_paths.mat'))
     x_mat = mat['X']
     y_mat = mat['Y']
-    i=0
+    i = 0
     for traj in zip(x_mat, y_mat):
+        i+=1
         plt.figure()
-        plt.plot(*traj)
+        x, y = traj
+        plt.plot(y, x)
+        plt.gca().invert_yaxis()
         plt.show()
         psf = generate_psf(*traj)
         plt.figure()
@@ -26,7 +30,8 @@ def main():
         plt.figure()
         plt.imshow(conv2d(image, psf, 'same'), cmap='gray')
         plt.show()
-        break
+        if i == 1:
+            break
 
 
 def restore_image(images, origin_image):
@@ -36,16 +41,13 @@ def restore_image(images, origin_image):
 
 
 def generate_psf(cont_x, cont_y):
-    discrete_x = cont_x[0::3]
-    discrete_x += -min(discrete_x)
-    discrete_x /= max(discrete_x)
-    discrete_y = cont_y[0::3]
-    discrete_y += -min(discrete_y)
-    discrete_y /= max(discrete_y)
-    psf = np.zeros((discrete_y.shape[0], discrete_x.shape[0]))
-    for xx, yy in zip(discrete_x, discrete_y):
-        psf[int(round(yy * 255)), int(round(xx * 255))] = 1
-    return psf / psf.sum()
+    indxs = np.linspace(0, 1001, num=256, endpoint=False, dtype=int)
+    discrete = np.array((cont_x[indxs], cont_y[indxs]))
+    discrete = np.round(discrete / np.max(np.abs(discrete)) * (PSF_SIZE - 1)//2)
+    psf = np.zeros((PSF_SIZE, PSF_SIZE), dtype=int)
+    for x, y in zip(discrete[0], discrete[1]):
+        psf[int(x)+PSF_SIZE//2, int(y)+PSF_SIZE//2] += 1
+    return psf
 
 
 if __name__ == '__main__':
