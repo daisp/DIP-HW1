@@ -12,7 +12,7 @@ PSF_SIZE = 7
 
 
 def blur_images_and_show(image, show=True, stop=0):
-    print(image)
+    # print(image)
     mat = sio.loadmat(Path('./hw1/100_motion_paths.mat'))
     x_mat = mat['X']
     y_mat = mat['Y']
@@ -30,9 +30,8 @@ def blur_images_and_show(image, show=True, stop=0):
             plt.figure()
             plt.imshow(psf, cmap='gray')
         blurred_image = conv2d(image, psf, 'same')
-        print(blurred_image)
-        blurred_images.append(blurred_image)
         # print(blurred_image)
+        blurred_images.append(blurred_image)
         if show:
             plt.figure()
             plt.imshow(blurred_image, cmap='gray')
@@ -56,31 +55,37 @@ def restore_image(images, origin_image, show=True):
                     if np.abs(fba_image[row, col]) < np.abs(image_ft[row, col]):
                         fba_image[row, col] = image_ft[row, col]
         restored_image = np.abs(ifft2(fba_image))
-        # print(image)
         if show:
             plt.figure()
             plt.imshow(restored_image, cmap='gray')
             plt.show()
         n = psnr(origin_image, restored_image)
-        # print(n)
         psnr_list.append(n)
-    return psnr_list
+    return psnr_list, restored_image
 
 
 def generate_psf(cont_x, cont_y):
     indxs = np.linspace(0, 1001, num=256, endpoint=False, dtype=int)
     discrete = np.array((cont_x[indxs], cont_y[indxs]))
+    discrete[0] /= np.max(np.abs(discrete[0]))
+    discrete[1] /= np.max(np.abs(discrete[1]))
+    discrete *= (PSF_SIZE - 1) // 2
     discrete = np.round(discrete)
+    # print(discrete[0], discrete[1])
     psf = np.zeros((PSF_SIZE, PSF_SIZE), dtype=int)
     for x, y in zip(discrete[0], discrete[1]):
-        psf[int(x) + PSF_SIZE // 2, int(y) + PSF_SIZE // 2] += 1
-    return psf
+        psf[int(x) + (PSF_SIZE - 1) // 2, int(y) + (PSF_SIZE - 1) // 2] += 1
+    return psf / np.sum(psf)
 
 
 if __name__ == '__main__':
     original_image = cv2.imread(str(Path('./hw1/DIPSourceHW1.jpg')), 0)
-    blurred_images = blur_images_and_show(original_image, show=False, stop=2)
-    res = restore_image(blurred_images, original_image, show=False)
+    blurred_images = blur_images_and_show(original_image, show=False, stop=0)
+    psnr_list, restored_image = restore_image(blurred_images, original_image, show=False)
     plt.figure()
-    plt.plot(res)
+    plt.plot(psnr_list)
+    plt.figure()
+    plt.imshow(original_image, cmap='gray')
+    plt.figure()
+    plt.imshow(restored_image, cmap='gray')
     plt.show()
