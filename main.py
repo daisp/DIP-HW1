@@ -41,45 +41,55 @@ def blur_images_and_show(image, show=True, stop=0):
 
 
 def restore_image(images, origin_image, show=True, p=np.inf):
-    psnr = lambda orig_img, img2: 10 * math.log10((255 ** 2) / np.mean((orig_img - img2) ** 2))
+    psnr = lambda orig_img, img2: 10 * math.log10((255 ** 2) / np.mean(np.power(orig_img - img2, 2)))
     psnr_list = []
-    fba_image = None
     restored_img = None
     if p is np.inf:
-        print("p is infinity")
-        for image in images:
-            if fba_image is None:
-                fba_image = fft2(image).copy()
-            else:
-                image_ft = fft2(image)
-                for row in range(np.shape(fba_image)[0]):
-                    for col in range(np.shape(fba_image)[1]):
-                        if np.abs(fba_image[(row, col)]) < np.abs(image_ft[(row, col)]):
-                            fba_image[(row, col)] = image_ft[(row, col)]
-            restored_img = np.abs(ifft2(fba_image))
-            if show:
-                plt.figure()
-                plt.imshow(restored_img, cmap='gray')
-                plt.show()
-            psnr_list.append(psnr(origin_image, restored_img))
+        restored_img = compute_by_max(images, restored_img, psnr, psnr_list, origin_image)
     else:
-        assert p is not np.inf
-        print("p is {}".format(p))
-        weighted_sum_without_last_img = np.zeros_like(fft2(images[0]))
-        sum_abs_p_v_hat_0_to_M = np.zeros_like(weighted_sum_without_last_img)
-        for M in range(len(images)):
-            print(M)
-            v_hat_M = fft2(images[M])
-            abs_p_v_hat_M = np.abs(v_hat_M) ** p
-            sum_abs_p_v_hat_0_to_M += abs_p_v_hat_M
-            weighted_sum_without_last_img += np.multiply(np.divide(abs_p_v_hat_M, sum_abs_p_v_hat_0_to_M), v_hat_M)
-            restored_img = np.abs(ifft2(weighted_sum_without_last_img))
-            if show:
-                plt.figure()
-                plt.imshow(restored_img, cmap='gray')
-                plt.show()
-            psnr_list.append(psnr(origin_image, restored_img))
+        restored_img = compute_by_p(images, p, restored_img, psnr, psnr_list, origin_image)
+    if show:
+        plt.figure()
+        plt.imshow(restored_img, cmap='gray')
+        plt.show()
     return psnr_list, restored_img
+
+
+def get_weighted_sum(numerators, denominator, m, images):
+    weighted_sum = np.zeros_like(fft2(images[0]))
+    for i in range(m):
+        v_hat = fft2(images[i])
+        weighted_sum += np.multiply(np.divide(numerators[i], denominator), v_hat)
+    return weighted_sum
+
+
+def compute_by_p(images, p, restored_img, psnr, psnr_list, origin_image):
+    print("p is {}".format(p))
+    sum_abs_v_hat_to_the_p_0_to_m = np.zeros_like(fft2(images[0]))
+    v_hat_to_the_p_list = []
+    for m in range(len(images)):
+        v_hat = fft2(images[m])
+        abs_v_hat_to_the_p = np.power(np.abs(v_hat), p)
+        sum_abs_v_hat_to_the_p_0_to_m += abs_v_hat_to_the_p
+        v_hat_to_the_p_list.append(abs_v_hat_to_the_p)
+        weighted_sum = get_weighted_sum(v_hat_to_the_p_list, sum_abs_v_hat_to_the_p_0_to_m, m, images)
+        restored_img = np.abs(ifft2(weighted_sum))
+        psnr_list.append(psnr(origin_image, restored_img))
+    return restored_img
+
+
+def compute_by_max(images, restored_img, psnr, psnr_list, origin_image):
+    print("p is infinity")
+    fba_image = None
+    for image in images:
+        if fba_image is None:
+            fba_image = fft2(image).copy()
+        else:
+            image_ft = fft2(image)
+            fba_image = np.where(np.abs(image_ft) > np.abs(fba_image), image_ft, fba_image)
+        restored_img = np.abs(ifft2(fba_image))
+        psnr_list.append(psnr(origin_image, restored_img))
+    return restored_img
 
 
 def generate_psf(cont_x, cont_y):
@@ -98,9 +108,9 @@ def generate_psf(cont_x, cont_y):
 if __name__ == '__main__':
     original_image = cv2.imread(str(Path('./hw1/DIPSourceHW1.jpg')), 0)
     blurred_images = blur_images_and_show(original_image, show=False, stop=0)
-    psnr_list, restored_image = restore_image(blurred_images, original_image, show=False, p=5)
+    psnr_list_results, restored_image = restore_image(blurred_images, original_image, show=False, p=20)
     plt.figure()
-    plt.plot(psnr_list)
+    plt.plot(psnr_list_results)
     plt.figure()
     plt.imshow(original_image, cmap='gray')
     plt.figure()
