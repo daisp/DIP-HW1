@@ -142,7 +142,7 @@ def show_restoration_results(p_val=np.inf):
 
 if __name__ == '__main__':
     original_image = cv2.imread(str(Path('./hw1/DIPSourceHW1.jpg')), 0)
-    blurred_images = blur_images_and_show(original_image, psf_size=19, show=False, stop=0, random_plot_size=0)
+    blurred_images = blur_images_and_show(original_image, psf_size=19, show=False, stop=0, random_plot_size=5)
     # ====== test best p ========#
     # show_restoration_results()
     # for p in range(10, 25):
